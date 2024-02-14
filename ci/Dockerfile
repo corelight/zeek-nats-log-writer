@@ -14,6 +14,5 @@ WORKDIR /zeek-nats
 
 COPY ./ .
 
-RUN git status .
-RUN yes | zkg install .
+RUN ./configure && make -j8
 RUN zeek -N Zeek::NATS

@@ -48,8 +48,6 @@ zeek_plugin_link_library(nats_static)
 zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
 zeek_plugin_end()
 
-target_compile_options(Zeek_NATS PRIVATE -fno-omit-frame-pointer -gdwarf)
-
 if ("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
     # Allows building rpm/deb packages via "make package" in build dir.
     include(ConfigurePackaging)

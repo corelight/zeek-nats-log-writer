@@ -28,11 +28,40 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     url = zeek::id::find_val<zeek::StringVal>("NATS::url")->ToStdString();
     stream_name = zeek::id::find_val<zeek::StringVal>("NATS::stream_name")->ToStdString();
     subject_prefix = zeek::id::find_val<zeek::StringVal>("NATS::subject_prefix")->ToStdString();
+    stream_storage = zeek::id::find_val<zeek::StringVal>("NATS::stream_storage")->AsEnum();
+    include_unset_fields = zeek::id::find_val<BoolVal>("NATS::include_unset_fields")->AsBool();
+
+    for ( const auto& [name, value] : info.config ) {
+        if ( zeek::util::streq(name, "url") ) {
+            url = value;
+        }
+        else if ( zeek::util::streq(name, "stream_name") ) {
+            stream_name = value;
+        }
+        else if ( zeek::util::streq(name, "subject_prefix") ) {
+            subject_prefix = value;
+        }
+        else if ( zeek::util::streq(name, "include_unset_fields") ) {
+            if ( zeek::util::streq(value, "T") ) {
+                include_unset_fields = true;
+            }
+            else if ( zeek::util::streq(value, "F") ) {
+                include_unset_fields = false;
+            }
+            else {
+                zeek::reporter->Error("NATS: Unknown value for include_unset_fields %s:%s", name, value);
+                return false;
+            }
+        }
+        else {
+            zeek::reporter->Error("NATS: Unknown map config %s", name);
+            return false;
+        }
+    }
+
     subject = zeek::util::fmt("%s.%s", subject_prefix.c_str(), info.path);
     stream_subject = zeek::util::fmt("%s.*", subject_prefix.c_str());
     stream_subjects.push_back(stream_subject.c_str());
-    stream_storage = zeek::id::find_val<zeek::StringVal>("NATS::stream_storage")->AsEnum();
-    include_unset_fields = zeek::id::find_val<BoolVal>("NATS::include_unset_fields")->AsBool();
 
     // XXX: Make configurable?
     auto tf = zeek::threading::formatter::JSON::TS_EPOCH;
