@@ -142,14 +142,12 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
 
     if ( ! Connect() ) {
         writer_stats.dropped_writes++;
-        return false;
+        return true;
     }
 
     desc.Clear();
     if ( ! formatter->Describe(&desc, num_fields, fields, vals) )
         return false;
-
-    desc.AddRaw("\n", 1);
 
     const char* data = (const char*)desc.Bytes();
     int data_len = desc.Len();
