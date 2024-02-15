@@ -1,6 +1,0 @@
-[submodule "3rdparty/nats.c"]
-	path = 3rdparty/nats.c
-	url = https://github.com/nats-io/nats.c.git
-[submodule "3rdparty/protobuf-c"]
-	path = 3rdparty/protobuf-c
-	url = https://github.com/protobuf-c/protobuf-c.git

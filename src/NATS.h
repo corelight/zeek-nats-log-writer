@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nats.h>
+#include <nats/nats.h>
 #include <memory>
 #include <vector>
 

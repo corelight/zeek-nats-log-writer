@@ -7,18 +7,18 @@
 plugin_usage()
 {
     : # Do nothing
-#    cat <<EOF
-#    --with-foo=DIR          Path to foo
-# EOF
+    cat <<EOF
+    --with-libnats-root=DIR          Path to foo
+EOF
 }
 
 plugin_option()
 {
     case "$1" in
-#        --with-foo=*)
-#            append_cache_entry FOO_DIR PATH $optarg
-#            return 0
-#            ;;
+        --with-libnats-root=*)
+            append_cache_entry LIBNATS_ROOT_DIR PATH $optarg
+            return 0
+            ;;
 
         *)
             return 1;

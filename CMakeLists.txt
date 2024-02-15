@@ -6,22 +6,14 @@ project(ZeekNATS)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# THIS IS TOTAL HACK.
-# We try to statically link libprotobuf-c and nats.c
-# with the plugin for reasons where this was meant to
-# be deployed initially.
-set(BUILD_PROTOC OFF CACHE BOOL "disable protoc")
-add_subdirectory(./3rdparty/protobuf-c/build-cmake)
+find_package(LibNATS REQUIRED)
 
-set(NATS_BUILD_EXAMPLES OFF)
-set(NATS_BUILD_LIB_SHARED OFF)
-set(NATS_PROTOBUF_DIR 3rdparty/protobuf-c)
-set(NATS_PROTOBUF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/protobuf-c)
-set(NATS_PROTOBUF_LIBRARY $<TARGET_FILE:protobuf-c>)
+message(STATUS "LIBNATS libraries: ${LIBNATS_LIBRARIES}")
+message(STATUS "LIBNATS include: ${LIBNATS_INCLUDE_DIRS}")
 
-add_subdirectory(./3rdparty/nats.c)
-add_dependencies(nats_static protobuf-c)
+include_directories(BEFORE ${LIBNATS_INCLUDE_DIRS})
 
 # Establish version numbers in config.h
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" VERSION LIMIT_COUNT 1)
@@ -43,7 +35,7 @@ include(ZeekPlugin)
 zeek_plugin_begin(Zeek NATS)
 zeek_plugin_cc(src/Plugin.cc)
 zeek_plugin_cc(src/NATS.cc)
-zeek_plugin_link_library(nats_static)
+zeek_plugin_link_library(${LIBNATS_LIBRARIES})
 
 zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
 zeek_plugin_end()
