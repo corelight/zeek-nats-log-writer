@@ -170,6 +170,12 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
     return true;
 }
 
+bool NATSWriter::DoRotate(const char* rotated_path, double open, double close, bool terminating) {
+    debug("DoRotate");
+    FinishedRotation();
+    return true;
+}
+
 bool NATSWriter::DoFlush(double network_time) {
     debug("DoFlush");
     return true;
