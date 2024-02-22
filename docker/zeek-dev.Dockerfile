@@ -1,12 +1,11 @@
-FROM zeek/zeek:6.0
+FROM zeek/zeek-dev
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
 	build-essential \
 	cmake \
 	libpcap-dev \
 	libssl-dev \
-	libprotobuf-dev \
-	protobuf-compiler
+	libnats-dev
 
 RUN git config --global --add safe.directory $(pwd)
 
@@ -14,5 +13,6 @@ WORKDIR /zeek-nats
 
 COPY ./ .
 
-RUN ./configure && make -j8
+RUN ./configure
+RUN make install
 RUN zeek -N Zeek::NATS

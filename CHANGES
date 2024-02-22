@@ -1,3 +1,11 @@
+0.0.6-4 | 2024-02-22 18:46:22 +0100
+
+  * github: Add CI workflow for PRs (Arne Welzel, Corelight)
+
+  * pre-commit: Add pre-commit setup (Arne Welzel, Corelight)
+
+  * cmake/README: Polishing (Arne Welzel, Corelight)
+
 0.0.6 | 2024-02-15 04:40:37 +0100
 
   * Release 0.0.6.

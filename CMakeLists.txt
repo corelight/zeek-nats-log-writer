@@ -1,5 +1,3 @@
-# This file is maintained by zkg. Do not edit.
-# Put required additional cmake functionality into plugin.cmake.
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 
 project(ZeekNATS)
@@ -24,11 +22,8 @@ list(GET version_numbers 0 VERSION_MAJOR)
 list(GET version_numbers 1 VERSION_MINOR)
 list(GET version_numbers 2 VERSION_PATCH)
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/config.h" @ONLY)
-
-# Process any package-specific customizations
-include(plugin.cmake OPTIONAL)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h"
+               @ONLY)
 
 include(ZeekPlugin)
 
