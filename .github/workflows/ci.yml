@@ -1,0 +1,17 @@
+name: Check
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+jobs:
+  test:
+    name: test-${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - zeek-6.0
+          - zeek-dev
+    steps:
+    - uses: actions/checkout@v4
+    - run: docker build -t ${{ matrix.image }}-nats -f docker/${{ matrix.image }}.Dockerfile .
