@@ -1,3 +1,24 @@
+0.0.7 | 2024-02-23 14:26:19 +0100
+
+  * Write: Use multiple streams by default, make configurable (Arne Welzel, Corelight)
+
+    This is a bit of a mess, but the new test should show how to
+    switch into single stream mode.
+
+    It's overly configurable, but essentially supports single stream
+    with a wildcard subject on the stream, or individual streams
+    where the publish subject should agree with the stream subject.
+
+  * Writer: Do not use zeek::Reporter calls (Arne Welzel, Corelight)
+
+    These aren't actually safe to be called from logging threads. Oh my.
+
+  * testing: Run basic integration test in container (Arne Welzel, Corelight)
+
+  * DoFinish: Wait for outstanding publishes during DoFinish (Arne Welzel, Corelight)
+
+  * DoWrite: Make publish asynchronous (Arne Welzel, Corelight)
+
 0.0.6-4 | 2024-02-22 18:46:22 +0100
 
   * github: Add CI workflow for PRs (Arne Welzel, Corelight)

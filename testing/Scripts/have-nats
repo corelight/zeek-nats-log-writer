@@ -1,0 +1,6 @@
+#!/bin/bash
+set -ex
+
+type nats
+
+nats account info
