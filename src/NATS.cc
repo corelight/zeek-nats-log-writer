@@ -1,12 +1,14 @@
 #include "NATS.h"
 
+#include <cstdio>
+#include <mutex>
+
 #include "zeek/ID.h"
 
 #include "Plugin.h"
 
 using namespace zeek::logging;
 using namespace zeek::plugin::Zeek_NATS::detail;
-
 
 NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {}
 NATSWriter::~NATSWriter() {
@@ -21,6 +23,28 @@ NATSWriter::~NATSWriter() {
         jsCtx_Destroy(js);
 }
 
+namespace {
+void _jsPubErr(jsCtx* js, jsPubAckErr* pae, void* closure) {
+    auto* writer = static_cast<NATSWriter*>(closure);
+    writer->PublishError(pae->ErrCode, pae->ErrText);
+}
+} // namespace
+
+void NATSWriter::PublishError(int code, const char* text) {
+    // May be called asynchronously and from DoWrite(), so don't use
+    // Error() or Fmt() and instead go through fprintf and use a lock.
+    static std::mutex mx;
+    std::lock_guard lock(mx);
+    if ( publish_error_log > 0 ) {
+        if ( writer_stats.publish_errors % publish_error_log == 0 ) {
+            std::fprintf(stderr, "NATS/%s: PublishError: %s [pid=%d code=%d publish_errors=%" PRIu64 "]\n", Name(),
+                         text, getpid(), code, writer_stats.publish_errors + 1);
+        }
+    }
+
+    writer_stats.publish_errors++;
+}
+
 bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const threading::Field* const* arg_fields) {
     debug("DoInit %s", info.path);
     natsStatus s = NATS_OK;
@@ -30,6 +54,10 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     subject_prefix = zeek::id::find_val<zeek::StringVal>("NATS::subject_prefix")->ToStdString();
     stream_storage = zeek::id::find_val<zeek::StringVal>("NATS::stream_storage")->AsEnum();
     include_unset_fields = zeek::id::find_val<BoolVal>("NATS::include_unset_fields")->AsBool();
+    publish_error_log = zeek::id::find_val<BoolVal>("NATS::publish_error_log")->AsCount();
+    publish_async_max_pending = zeek::id::find_val<BoolVal>("NATS::publish_async_max_pending")->AsInt();
+    publish_async_stall_wait_ms =
+        static_cast<int64_t>(zeek::id::find_val<BoolVal>("NATS::publish_async_stall_wait")->AsInterval() * 1000);
 
     for ( const auto& [name, value] : info.config ) {
         if ( zeek::util::streq(name, "url") ) {
@@ -77,9 +105,15 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
         return false;
     }
     if ( s = jsOptions_Init(&jsOpts); s != NATS_OK ) {
+        natsOptions_Destroy(opts);
         zeek::reporter->Error("NATS: Failed to init JetStream options: %s", nats_GetLastError(nullptr));
         return false;
     }
+
+    jsOpts.PublishAsync.MaxPending = publish_async_max_pending;
+    jsOpts.PublishAsync.ErrHandler = _jsPubErr;
+    jsOpts.PublishAsync.ErrHandlerClosure = this;
+    jsOpts.PublishAsync.StallWait = publish_async_stall_wait_ms;
 
     return true;
 }
@@ -161,8 +195,9 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
     jsPubOptions jsPubOpts;
     jsPubOptions_Init(&jsPubOpts);
 
-    // XXX: Make asynchronous for performance?
-    js_PublishMsg(nullptr /*pubAck*/, js, msg, &jsPubOpts, &jerr);
+    if ( s = js_PublishMsgAsync(js, &msg, &jsPubOpts); s != NATS_OK )
+        PublishError(s, nats_GetLastError(nullptr));
+
     natsMsg_Destroy(msg);
 
     return true;
