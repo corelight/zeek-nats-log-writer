@@ -58,6 +58,8 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     publish_async_max_pending = zeek::id::find_val<BoolVal>("NATS::publish_async_max_pending")->AsInt();
     publish_async_stall_wait_ms =
         static_cast<int64_t>(zeek::id::find_val<BoolVal>("NATS::publish_async_stall_wait")->AsInterval() * 1000);
+    publish_async_complete_max_wait_ms =
+        static_cast<int64_t>(zeek::id::find_val<BoolVal>("NATS::publish_async_complete_max_wait")->AsInterval() * 1000);
 
     for ( const auto& [name, value] : info.config ) {
         if ( zeek::util::streq(name, "url") ) {
@@ -192,10 +194,7 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
         return false;
     }
 
-    jsPubOptions jsPubOpts;
-    jsPubOptions_Init(&jsPubOpts);
-
-    if ( s = js_PublishMsgAsync(js, &msg, &jsPubOpts); s != NATS_OK )
+    if ( s = js_PublishMsgAsync(js, &msg, NULL); s != NATS_OK )
         PublishError(s, nats_GetLastError(nullptr));
 
     natsMsg_Destroy(msg);
@@ -216,6 +215,14 @@ bool NATSWriter::DoFlush(double network_time) {
 
 bool NATSWriter::DoFinish(double network_time) {
     debug("DoFinish");
+    natsStatus s = NATS_OK;
+    jsPubOptions completeOpts;
+    completeOpts.MaxWait = publish_async_complete_max_wait_ms;
+    jsPubOptions_Init(&completeOpts);
+
+    if ( s = js_PublishAsyncComplete(js, &completeOpts); s != NATS_OK )
+        Warning(Fmt("DoFinish: PublishAsyncComplete failed: %s", nats_GetLastError(nullptr)));
+
     return true;
 }
 

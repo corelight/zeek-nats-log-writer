@@ -60,5 +60,6 @@ private:
     zeek_uint_t publish_error_log;
     int64_t publish_async_max_pending;
     int64_t publish_async_stall_wait_ms;
+    int64_t publish_async_complete_max_wait_ms;
 };
 } // namespace zeek::plugin::Zeek_NATS::detail
