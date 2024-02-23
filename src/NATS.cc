@@ -79,12 +79,12 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
                 include_unset_fields = false;
             }
             else {
-                zeek::reporter->Error("NATS: Unknown value for include_unset_fields %s:%s", name, value);
+                Error(Fmt("NATS: Unknown value for include_unset_fields %s:%s", name, value));
                 return false;
             }
         }
         else {
-            zeek::reporter->Error("NATS: Unknown map config %s", name);
+            Error(Fmt("NATS: Unknown map config %s", name));
             return false;
         }
     }
@@ -98,17 +98,17 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     formatter = std::make_unique<zeek::threading::formatter::JSON>(this, tf, include_unset_fields);
 
     if ( s = natsOptions_Create(&opts); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Could not create options");
+        Error("NATS: Could not create options");
         return false;
     }
 
     if ( s = natsOptions_SetURL(opts, url.c_str()); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Failed to SetURL %s: %s", url.c_str(), nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed to SetURL %s: %s", url.c_str(), nats_GetLastError(nullptr)));
         return false;
     }
     if ( s = jsOptions_Init(&jsOpts); s != NATS_OK ) {
         natsOptions_Destroy(opts);
-        zeek::reporter->Error("NATS: Failed to init JetStream options: %s", nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed to init JetStream options: %s", nats_GetLastError(nullptr)));
         return false;
     }
 
@@ -126,14 +126,14 @@ bool NATSWriter::Connect() {
 
     natsStatus s;
     if ( s = natsConnection_Connect(&conn, opts); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Failed to connect to %s: %s", url.c_str(), nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed to connect to %s: %s", url.c_str(), nats_GetLastError(nullptr)));
         return false;
     }
 
     debug("Connected!");
 
     if ( s = natsConnection_JetStream(&js, conn, &jsOpts); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Failed to initialize JetStream: %s", nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed to initialize JetStream: %s", nats_GetLastError(nullptr)));
         natsConnection_Destroy(conn);
         conn = nullptr;
     }
@@ -160,7 +160,7 @@ bool NATSWriter::Connect() {
 
     // Add the stream,
     if ( s = js_AddStream(nullptr, js, &cfg, NULL, &jerr); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Failed to add stream: %s", nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed to add stream: %s", nats_GetLastError(nullptr)));
         natsConnection_Destroy(conn);
         conn = nullptr;
         jsCtx_Destroy(js);
@@ -190,7 +190,7 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
 
     natsMsg* msg;
     if ( s = natsMsg_Create(&msg, subject.c_str(), nullptr /*reply*/, data, data_len); s != NATS_OK ) {
-        zeek::reporter->Error("NATS: Failed Create message: %s", nats_GetLastError(nullptr));
+        Error(Fmt("NATS: Failed Create message: %s", nats_GetLastError(nullptr)));
         return false;
     }
 
