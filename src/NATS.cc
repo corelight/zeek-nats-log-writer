@@ -28,6 +28,23 @@ void _jsPubErr(jsCtx* js, jsPubAckErr* pae, void* closure) {
     auto* writer = static_cast<NATSWriter*>(closure);
     writer->PublishError(pae->ErrCode, pae->ErrText);
 }
+
+struct Replace {
+    std::string needle;
+    std::string replacement;
+};
+
+std::string template_replace(std::string tmpl, std::vector<Replace>& replacements) {
+    for ( const auto& r : replacements ) {
+        size_t offset = 0;
+        while ( (offset = tmpl.find(r.needle, offset)) != std::string::npos ) {
+            tmpl = tmpl.replace(offset, r.needle.size(), r.replacement);
+            offset += r.replacement.size();
+        }
+    }
+
+    return tmpl;
+}
 } // namespace
 
 void NATSWriter::PublishError(int code, const char* text) {
@@ -50,8 +67,9 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     natsStatus s = NATS_OK;
 
     url = zeek::id::find_val<zeek::StringVal>("NATS::url")->ToStdString();
-    stream_name = zeek::id::find_val<zeek::StringVal>("NATS::stream_name")->ToStdString();
-    subject_prefix = zeek::id::find_val<zeek::StringVal>("NATS::subject_prefix")->ToStdString();
+    publish_subject_template = zeek::id::find_val<zeek::StringVal>("NATS::publish_subject_template")->ToStdString();
+    stream_name_template = zeek::id::find_val<zeek::StringVal>("NATS::stream_name_template")->ToStdString();
+    stream_subject_template = zeek::id::find_val<zeek::StringVal>("NATS::stream_subject_template")->ToStdString();
     stream_storage = zeek::id::find_val<zeek::StringVal>("NATS::stream_storage")->AsEnum();
     include_unset_fields = zeek::id::find_val<BoolVal>("NATS::include_unset_fields")->AsBool();
     publish_error_log = zeek::id::find_val<BoolVal>("NATS::publish_error_log")->AsCount();
@@ -65,11 +83,14 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
         if ( zeek::util::streq(name, "url") ) {
             url = value;
         }
-        else if ( zeek::util::streq(name, "stream_name") ) {
-            stream_name = value;
+        else if ( zeek::util::streq(name, "stream_name_template") ) {
+            stream_name_template = value;
         }
-        else if ( zeek::util::streq(name, "subject_prefix") ) {
-            subject_prefix = value;
+        else if ( zeek::util::streq(name, "stream_subject_template") ) {
+            stream_name_template = value;
+        }
+        else if ( zeek::util::streq(name, "publish_subject_template") ) {
+            publish_subject_template = value;
         }
         else if ( zeek::util::streq(name, "include_unset_fields") ) {
             if ( zeek::util::streq(value, "T") ) {
@@ -89,9 +110,15 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
         }
     }
 
-    subject = zeek::util::fmt("%s.%s", subject_prefix.c_str(), info.path);
-    stream_subject = zeek::util::fmt("%s.*", subject_prefix.c_str());
+    std::vector<Replace> replacements({{"{path}", info.path}});
+
+    stream_name = template_replace(stream_name_template, replacements);
+    publish_subject = template_replace(publish_subject_template, replacements);
+    stream_subject = template_replace(stream_subject_template, replacements);
     stream_subjects.push_back(stream_subject.c_str());
+
+    debug("Templated: stream_name=%s subject=%s stream_subject=%s", stream_name.c_str(), publish_subject.c_str(),
+          stream_subject.c_str());
 
     // XXX: Make configurable?
     auto tf = zeek::threading::formatter::JSON::TS_EPOCH;
@@ -138,8 +165,6 @@ bool NATSWriter::Connect() {
         conn = nullptr;
     }
 
-    debug("JetStream initialized %s / %s", stream_name.c_str(), subject.c_str());
-
     jsErrCode jerr;
     jsStreamConfig cfg;
 
@@ -160,7 +185,8 @@ bool NATSWriter::Connect() {
 
     // Add the stream,
     if ( s = js_AddStream(nullptr, js, &cfg, NULL, &jerr); s != NATS_OK ) {
-        Error(Fmt("NATS: Failed to add stream: %s", nats_GetLastError(nullptr)));
+        Error(Fmt("NATS: Failed to add stream (stream_name=%s stream_subject=%s): %s", stream_name.c_str(),
+                  stream_subject.c_str(), nats_GetLastError(nullptr)));
         natsConnection_Destroy(conn);
         conn = nullptr;
         jsCtx_Destroy(js);
@@ -189,7 +215,7 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
     int data_len = desc.Len();
 
     natsMsg* msg;
-    if ( s = natsMsg_Create(&msg, subject.c_str(), nullptr /*reply*/, data, data_len); s != NATS_OK ) {
+    if ( s = natsMsg_Create(&msg, publish_subject.c_str(), nullptr /*reply*/, data, data_len); s != NATS_OK ) {
         Error(Fmt("NATS: Failed Create message: %s", nats_GetLastError(nullptr)));
         return false;
     }
@@ -217,8 +243,8 @@ bool NATSWriter::DoFinish(double network_time) {
     debug("DoFinish");
     natsStatus s = NATS_OK;
     jsPubOptions completeOpts;
-    completeOpts.MaxWait = publish_async_complete_max_wait_ms;
     jsPubOptions_Init(&completeOpts);
+    completeOpts.MaxWait = publish_async_complete_max_wait_ms;
 
     if ( s = js_PublishAsyncComplete(js, &completeOpts); s != NATS_OK )
         Warning(Fmt("DoFinish: PublishAsyncComplete failed: %s", nats_GetLastError(nullptr)));

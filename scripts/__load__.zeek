@@ -7,8 +7,17 @@ export {
 	};
 
 	global url: string = "nats://localhost:4222" &redef;
-	global stream_name: string = "sensor-logs" &redef;
-	global subject_prefix: string = "sensor.logs" &redef;
+
+	# This template is interpolated to produce the subject to publish to.
+	global publish_subject_template: string = "sensor.logs.{path}" &redef;
+
+	# This template is used to create the stream name.
+	global stream_name_template: string = "sensor-logs-{path}" &redef;
+
+	# This template is used to create subject of the stream.
+	# Use a wildcard match .* without the {path} variable if only a
+	# single stream is used.
+	global stream_subject_template: string = "sensor.logs.{path}" &redef;
 	global stream_storage: StreamStorage = FILE &redef;
 
 	global include_unset_fields: bool = F &redef;
@@ -23,5 +32,5 @@ export {
 	# there is MaxPending inflight messages, default is 200 ms.
 	global publish_async_stall_wait: interval = 200msec &redef;
 	# Amount of time to wait for async publish at shutdown.
-	global publish_async_complete_max_wait: interval = 500msec &redef;
+	global publish_async_complete_max_wait: interval = 1000msec &redef;
 }

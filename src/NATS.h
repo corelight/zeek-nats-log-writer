@@ -44,9 +44,11 @@ private:
     jsCtx* js = nullptr;
     jsOptions jsOpts;
     std::string url;
+    std::string stream_name_template;
+    std::string stream_subject_template;
     std::string stream_name;
-    std::string subject;
-    std::string subject_prefix;
+    std::string publish_subject_template;
+    std::string publish_subject;
     std::string stream_subject;
     std::vector<const char*> stream_subjects;
     zeek_uint_t stream_storage;
