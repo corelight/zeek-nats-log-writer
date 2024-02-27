@@ -26,6 +26,10 @@ export {
 	# none if set to 0. By default, log each of them.
 	global publish_error_log = 1 &redef;
 
+	# Log every n'th dropped write error, or
+	# none if set to 0. By default, log each of them.
+	global dropped_writes_log = 1 &redef;
+
 	# Maximum outstanding asynchronous publishes that can be inflight at one time.
 	global publish_async_max_pending: int = 0 &redef;
 	# Amount of time to wait in a PublishAsync call when

@@ -1,4 +1,6 @@
-0.1.0 | 2024-02-27 15:40:57 +0100
+0.1.0 | 2024-02-27 15:53:20 +0100
+
+  * Connect: Log connection errors. Fix order of cleanup. (Arne Welzel, Corelight)
 
   * zkg.meta: Minor update (Arne Welzel, Corelight)
 

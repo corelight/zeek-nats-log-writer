@@ -60,6 +60,7 @@ private:
 
     NATSWriterStats writer_stats;
     zeek_uint_t publish_error_log;
+    zeek_uint_t dropped_writes_log;
     int64_t publish_async_max_pending;
     int64_t publish_async_stall_wait_ms;
     int64_t publish_async_complete_max_wait_ms;

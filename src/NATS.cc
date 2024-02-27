@@ -73,6 +73,7 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     stream_storage = zeek::id::find_val<zeek::StringVal>("NATS::stream_storage")->AsEnum();
     include_unset_fields = zeek::id::find_val<BoolVal>("NATS::include_unset_fields")->AsBool();
     publish_error_log = zeek::id::find_val<BoolVal>("NATS::publish_error_log")->AsCount();
+    dropped_writes_log = zeek::id::find_val<BoolVal>("NATS::dropped_writes_log")->AsCount();
     publish_async_max_pending = zeek::id::find_val<BoolVal>("NATS::publish_async_max_pending")->AsInt();
     publish_async_stall_wait_ms =
         static_cast<int64_t>(zeek::id::find_val<BoolVal>("NATS::publish_async_stall_wait")->AsInterval() * 1000);
@@ -187,10 +188,10 @@ bool NATSWriter::Connect() {
     if ( s = js_AddStream(nullptr, js, &cfg, NULL, &jerr); s != NATS_OK ) {
         Error(Fmt("NATS: Failed to add stream (stream_name=%s stream_subject=%s): %s", stream_name.c_str(),
                   stream_subject.c_str(), nats_GetLastError(nullptr)));
-        natsConnection_Destroy(conn);
-        conn = nullptr;
         jsCtx_Destroy(js);
         js = nullptr;
+        natsConnection_Destroy(conn);
+        conn = nullptr;
         return false;
     }
 
@@ -203,8 +204,15 @@ bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, 
     jsErrCode jerr;
 
     if ( ! Connect() ) {
-        writer_stats.dropped_writes++;
-        return true;
+        if ( dropped_writes_log > 0 ) {
+            if ( writer_stats.dropped_writes % dropped_writes_log == 0 ) {
+                Error(Fmt("Dropped writes [pid=%d dropped_writes=%" PRIu64 "]\n", getpid(),
+                          writer_stats.dropped_writes + 1));
+            }
+
+            writer_stats.dropped_writes++;
+            return true;
+        }
     }
 
     desc.Clear();
