@@ -1,3 +1,11 @@
+0.1.0 | 2024-02-27 15:40:57 +0100
+
+  * zkg.meta: Minor update (Arne Welzel, Corelight)
+
+  * COPYING: Copyright Corelight, Inc. (Arne Welzel, Corelight)
+
+  * pre-commit: Run on main, not master (Arne Welzel, Corelight)
+
 0.0.7 | 2024-02-23 14:26:19 +0100
 
   * Write: Use multiple streams by default, make configurable (Arne Welzel, Corelight)

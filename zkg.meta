@@ -1,5 +1,5 @@
 [package]
 build_command = ./configure && cmake --build build
 test_command = cd testing && btest -c btest.cfg
-summary = NATS support
-description = Log writer for NATS
+summary = NATS.io log writer support
+description = NATS.io log writer support
