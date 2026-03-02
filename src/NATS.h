@@ -6,6 +6,7 @@
 
 #include "zeek/Desc.h"
 #include "zeek/logging/WriterBackend.h"
+#include "zeek/telemetry/Counter.h"
 #include "zeek/threading/formatters/JSON.h"
 
 using namespace zeek::logging;
@@ -69,5 +70,9 @@ private:
     int64_t publish_async_max_pending;
     int64_t publish_async_stall_wait_ms;
     int64_t publish_async_complete_max_wait_ms;
+
+    zeek::telemetry::CounterPtr dropped_writes_total;
+    zeek::telemetry::CounterPtr publish_errors_total;
+    zeek::telemetry::CounterPtr publish_acks_total;
 };
 } // namespace zeek::plugin::Zeek_Log_Writer_NATS::detail

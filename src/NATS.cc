@@ -6,13 +6,39 @@
 
 #include "zeek/ID.h"
 #include "zeek/Val.h"
+#include "zeek/logging/WriterFrontend.h"
+#include "zeek/telemetry/Manager.h"
 
 #include "Plugin.h"
 
 using namespace zeek::logging;
 using namespace zeek::plugin::Zeek_Log_Writer_NATS::detail;
 
-NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {}
+NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {
+    // Initialize the NATS metrics with callbacks that use
+    // the embedded WriterStats in in a NATSWriter instance.
+    std::vector<telemetry::LabelView> labels = {{"filter-name", frontend->GetFilterName()},
+                                                {"path", frontend->Info().path}};
+
+    dropped_writes_total = zeek::telemetry_mgr->CounterInstance(
+        "zeek", "nats-log-writer-backend-dropped-writes", labels,
+        "Dropped log writes of the NATS log writer because of connectivity issues or other problems.", "",
+        [stats = &writer_stats]() { return static_cast<double>(stats->dropped_writes); }),
+
+    publish_errors_total =
+        zeek::telemetry_mgr
+            ->CounterInstance("zeek", "nats-log-writer-backend-publish-errors", labels,
+                              "Publish errors reported from the NATS server via the installed AckHandler", "",
+                              [stats = &writer_stats]() { return static_cast<double>(stats->publish_errors); }),
+
+    publish_acks_total =
+        zeek::telemetry_mgr->CounterInstance("zeek", "nats-log-writer-backend-publish-acks", labels,
+                                             "Publish acknowledgements reported via the installed AckHandler", "",
+                                             [stats = &writer_stats]() {
+                                                 return static_cast<double>(stats->publish_acks);
+                                             });
+}
+
 NATSWriter::~NATSWriter() {
     debug("destructor");
     if ( opts )
@@ -23,6 +49,12 @@ NATSWriter::~NATSWriter() {
 
     if ( js )
         jsCtx_Destroy(js);
+
+    // The counter instances outlive the NATSWriter, but the callbacks
+    // point at the embedded writer_stats, so ensure to remove them.
+    dropped_writes_total->RemoveCallback();
+    publish_acks_total->RemoveCallback();
+    publish_errors_total->RemoveCallback();
 }
 
 namespace {
