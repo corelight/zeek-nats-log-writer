@@ -1,5 +1,6 @@
 #include "NATS.h"
 
+#include <nats/nats.h>
 #include <cstdio>
 #include <mutex>
 
@@ -25,9 +26,17 @@ NATSWriter::~NATSWriter() {
 }
 
 namespace {
-void _jsPubErr(jsCtx* js, jsPubAckErr* pae, void* closure) {
+void _jsPubAck(jsCtx* js, natsMsg* msg, jsPubAck* pa, jsPubAckErr* pae, void* closure) {
     auto* writer = static_cast<NATSWriter*>(closure);
-    writer->PublishError(pae->ErrCode, pae->ErrText);
+
+    if ( pa != nullptr ) {
+        writer->PublishAck(pa->Stream, pa->Sequence, pa->Domain, pa->Duplicate);
+    }
+    else if ( pae != nullptr ) {
+        writer->PublishError(pae->ErrCode, pae->ErrText);
+    }
+
+    natsMsg_Destroy(msg);
 }
 
 struct Replace {
@@ -47,6 +56,10 @@ std::string template_replace(std::string tmpl, std::vector<Replace>& replacement
     return tmpl;
 }
 } // namespace
+
+void NATSWriter::PublishAck(const char* stream, uint64_t sequence, const char* domain, bool duplicate) {
+    ++writer_stats.publish_acks;
+}
 
 void NATSWriter::PublishError(int code, const char* text) {
     // May be called asynchronously and from DoWrite(), so don't use
@@ -142,8 +155,8 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     }
 
     jsOpts.PublishAsync.MaxPending = publish_async_max_pending;
-    jsOpts.PublishAsync.ErrHandler = _jsPubErr;
-    jsOpts.PublishAsync.ErrHandlerClosure = this;
+    jsOpts.PublishAsync.AckHandler = _jsPubAck;
+    jsOpts.PublishAsync.AckHandlerClosure = this;
     jsOpts.PublishAsync.StallWait = publish_async_stall_wait_ms;
 
     return true;
@@ -200,6 +213,7 @@ bool NATSWriter::Connect() {
 
     return conn;
 }
+
 bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, threading::Value** vals) {
     natsStatus s = NATS_OK;
     jsErrCode jerr;

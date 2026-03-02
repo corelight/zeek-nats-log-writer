@@ -13,8 +13,9 @@ using namespace zeek::logging;
 namespace zeek::plugin::Zeek_Log_Writer_NATS::detail {
 
 struct NATSWriterStats {
-    zeek_uint_t dropped_writes = 0;
-    zeek_uint_t publish_errors = 0;
+    std::atomic<zeek_uint_t> dropped_writes = 0;
+    std::atomic<zeek_uint_t> publish_errors = 0;
+    std::atomic<zeek_uint_t> publish_acks = 0;
 };
 
 class NATSWriter : public WriterBackend {
@@ -24,6 +25,10 @@ public:
 
     static WriterBackend* Instantiate(WriterFrontend* frontend) { return new NATSWriter(frontend); }
 
+    // Callback for message acknowledgements.
+    void PublishAck(const char* stream, uint64_t sequence, const char* domain, bool duplicate);
+
+    // Callback for message delivery errors.
     void PublishError(int code, const char* text);
 
 protected:
