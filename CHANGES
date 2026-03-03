@@ -1,3 +1,9 @@
+0.3.0 | 2026-03-03 13:44:56 +0100
+
+  * Add dropped writes, acks and errors as metrics per NATS writer backend (Arne Welzel, Corelight)
+
+  * Install jsPubAck handler, start counting acks, use atomics (Arne Welzel, Corelight)
+
 0.2.0 | 2026-02-19 10:32:59 +0100
 
   * Release 0.2.0.

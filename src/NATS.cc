@@ -1,17 +1,44 @@
 #include "NATS.h"
 
+#include <nats/nats.h>
 #include <cstdio>
 #include <mutex>
 
 #include "zeek/ID.h"
 #include "zeek/Val.h"
+#include "zeek/logging/WriterFrontend.h"
+#include "zeek/telemetry/Manager.h"
 
 #include "Plugin.h"
 
 using namespace zeek::logging;
 using namespace zeek::plugin::Zeek_Log_Writer_NATS::detail;
 
-NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {}
+NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {
+    // Initialize the NATS metrics with callbacks that use
+    // the embedded WriterStats in in a NATSWriter instance.
+    std::vector<telemetry::LabelView> labels = {{"filter-name", frontend->GetFilterName()},
+                                                {"path", frontend->Info().path}};
+
+    dropped_writes_total = zeek::telemetry_mgr->CounterInstance(
+        "zeek", "nats-log-writer-backend-dropped-writes", labels,
+        "Dropped log writes of the NATS log writer because of connectivity issues or other problems.", "",
+        [stats = &writer_stats]() { return static_cast<double>(stats->dropped_writes); }),
+
+    publish_errors_total =
+        zeek::telemetry_mgr
+            ->CounterInstance("zeek", "nats-log-writer-backend-publish-errors", labels,
+                              "Publish errors reported from the NATS server via the installed AckHandler", "",
+                              [stats = &writer_stats]() { return static_cast<double>(stats->publish_errors); }),
+
+    publish_acks_total =
+        zeek::telemetry_mgr->CounterInstance("zeek", "nats-log-writer-backend-publish-acks", labels,
+                                             "Publish acknowledgements reported via the installed AckHandler", "",
+                                             [stats = &writer_stats]() {
+                                                 return static_cast<double>(stats->publish_acks);
+                                             });
+}
+
 NATSWriter::~NATSWriter() {
     debug("destructor");
     if ( opts )
@@ -22,12 +49,26 @@ NATSWriter::~NATSWriter() {
 
     if ( js )
         jsCtx_Destroy(js);
+
+    // The counter instances outlive the NATSWriter, but the callbacks
+    // point at the embedded writer_stats, so ensure to remove them.
+    dropped_writes_total->RemoveCallback();
+    publish_acks_total->RemoveCallback();
+    publish_errors_total->RemoveCallback();
 }
 
 namespace {
-void _jsPubErr(jsCtx* js, jsPubAckErr* pae, void* closure) {
+void _jsPubAck(jsCtx* js, natsMsg* msg, jsPubAck* pa, jsPubAckErr* pae, void* closure) {
     auto* writer = static_cast<NATSWriter*>(closure);
-    writer->PublishError(pae->ErrCode, pae->ErrText);
+
+    if ( pa != nullptr ) {
+        writer->PublishAck(pa->Stream, pa->Sequence, pa->Domain, pa->Duplicate);
+    }
+    else if ( pae != nullptr ) {
+        writer->PublishError(pae->ErrCode, pae->ErrText);
+    }
+
+    natsMsg_Destroy(msg);
 }
 
 struct Replace {
@@ -47,6 +88,10 @@ std::string template_replace(std::string tmpl, std::vector<Replace>& replacement
     return tmpl;
 }
 } // namespace
+
+void NATSWriter::PublishAck(const char* stream, uint64_t sequence, const char* domain, bool duplicate) {
+    ++writer_stats.publish_acks;
+}
 
 void NATSWriter::PublishError(int code, const char* text) {
     // May be called asynchronously and from DoWrite(), so don't use
@@ -142,8 +187,8 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     }
 
     jsOpts.PublishAsync.MaxPending = publish_async_max_pending;
-    jsOpts.PublishAsync.ErrHandler = _jsPubErr;
-    jsOpts.PublishAsync.ErrHandlerClosure = this;
+    jsOpts.PublishAsync.AckHandler = _jsPubAck;
+    jsOpts.PublishAsync.AckHandlerClosure = this;
     jsOpts.PublishAsync.StallWait = publish_async_stall_wait_ms;
 
     return true;
@@ -200,6 +245,7 @@ bool NATSWriter::Connect() {
 
     return conn;
 }
+
 bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, threading::Value** vals) {
     natsStatus s = NATS_OK;
     jsErrCode jerr;
