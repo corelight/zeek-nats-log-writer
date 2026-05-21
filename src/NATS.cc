@@ -37,6 +37,22 @@ NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {
                                              [stats = &writer_stats]() {
                                                  return static_cast<double>(stats->publish_acks);
                                              });
+
+    // Read script-layer globals on the main thread. DoInit runs in the writer
+    // backend thread where global_scope() is not safe to access.
+    url = zeek::id::find_val<zeek::StringVal>("LogNATS::url")->ToStdString();
+    publish_subject_template = zeek::id::find_val<zeek::StringVal>("LogNATS::publish_subject_template")->ToStdString();
+    stream_name_template = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_name_template")->ToStdString();
+    stream_subject_template = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_subject_template")->ToStdString();
+    stream_storage = zeek::id::find_val("LogNATS::stream_storage")->AsEnum();
+    include_unset_fields = zeek::id::find_val<zeek::BoolVal>("LogNATS::include_unset_fields")->AsBool();
+    publish_error_log = zeek::id::find_val("LogNATS::publish_error_log")->AsCount();
+    dropped_writes_log = zeek::id::find_val("LogNATS::dropped_writes_log")->AsCount();
+    publish_async_max_pending = zeek::id::find_val("LogNATS::publish_async_max_pending")->AsInt();
+    publish_async_stall_wait_ms =
+        static_cast<int64_t>(zeek::id::find_val("LogNATS::publish_async_stall_wait")->AsInterval() * 1000);
+    publish_async_complete_max_wait_ms =
+        static_cast<int64_t>(zeek::id::find_val("LogNATS::publish_async_complete_max_wait")->AsInterval() * 1000);
 }
 
 NATSWriter::~NATSWriter() {
@@ -111,20 +127,6 @@ void NATSWriter::PublishError(int code, const char* text) {
 bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const threading::Field* const* arg_fields) {
     debug("DoInit %s", info.path);
     natsStatus s = NATS_OK;
-
-    url = zeek::id::find_val<zeek::StringVal>("LogNATS::url")->ToStdString();
-    publish_subject_template = zeek::id::find_val<zeek::StringVal>("LogNATS::publish_subject_template")->ToStdString();
-    stream_name_template = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_name_template")->ToStdString();
-    stream_subject_template = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_subject_template")->ToStdString();
-    stream_storage = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_storage")->AsEnum();
-    include_unset_fields = zeek::id::find_val<BoolVal>("LogNATS::include_unset_fields")->AsBool();
-    publish_error_log = zeek::id::find_val<BoolVal>("LogNATS::publish_error_log")->AsCount();
-    dropped_writes_log = zeek::id::find_val<BoolVal>("LogNATS::dropped_writes_log")->AsCount();
-    publish_async_max_pending = zeek::id::find_val<BoolVal>("LogNATS::publish_async_max_pending")->AsInt();
-    publish_async_stall_wait_ms =
-        static_cast<int64_t>(zeek::id::find_val<BoolVal>("LogNATS::publish_async_stall_wait")->AsInterval() * 1000);
-    publish_async_complete_max_wait_ms = static_cast<int64_t>(
-        zeek::id::find_val<BoolVal>("LogNATS::publish_async_complete_max_wait")->AsInterval() * 1000);
 
     for ( const auto& [name, value] : info.config ) {
         if ( zeek::util::streq(name, "url") ) {
