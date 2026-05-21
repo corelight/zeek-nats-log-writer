@@ -134,7 +134,7 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
             stream_name_template = value;
         }
         else if ( zeek::util::streq(name, "stream_subject_template") ) {
-            stream_name_template = value;
+            stream_subject_template = value;
         }
         else if ( zeek::util::streq(name, "publish_subject_template") ) {
             publish_subject_template = value;
