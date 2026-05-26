@@ -1,3 +1,35 @@
+0.3.1 | 2026-05-26 09:38:40 +0200
+
+  * test: add btest for stream_subject_template per-filter config (Simon Dugas, Corelight)
+
+    Verifies that setting stream_subject_template via a Log::Filter's
+    $config table correctly overrides the global value.
+
+    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+
+  * fix(NATS): read globals on main thread, not in DoInit (Simon Dugas, Corelight)
+
+    DoInit runs in the writer backend thread where global_scope() is
+    not safe to access. Move all zeek::id::find_val calls into the
+    constructor, which executes on the main thread.
+
+    Also fixes incorrect BoolVal casts on non-bool fields that were
+    introduced alongside the original code.
+
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+  * fix(NATS): assign stream_subject_template correctly in DoInit (Simon Dugas, Corelight)
+
+    The stream_subject_template config key was mistakenly assigning its
+    value to stream_name_template, silently clobbering it and leaving
+    stream_subject_template unset.
+
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+  * Add btest for telemetry (Arne Welzel, Corelight)
+
+    I had this locally but never staged :-(
+
 0.3.0 | 2026-03-03 13:44:56 +0100
 
   * Add dropped writes, acks and errors as metrics per NATS writer backend (Arne Welzel, Corelight)
