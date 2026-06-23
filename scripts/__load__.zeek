@@ -22,6 +22,11 @@ export {
 
 	global include_unset_fields: bool = F &redef;
 
+	# By default, zeek-log-writer-nats will automatically create a JetStream
+	# stream to publish on. If create_stream is false, then the stream must be
+	# created and configured manually to work with zeek-log-writer-nats.
+	global create_stream: bool = T &redef;
+
 	# Log every n'th asynchronous publish error, or
 	# none if set to 0. By default, log each of them.
 	global publish_error_log = 1 &redef;

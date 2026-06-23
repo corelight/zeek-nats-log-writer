@@ -46,6 +46,7 @@ NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {
     stream_subject_template = zeek::id::find_val<zeek::StringVal>("LogNATS::stream_subject_template")->ToStdString();
     stream_storage = zeek::id::find_val("LogNATS::stream_storage")->AsEnum();
     include_unset_fields = zeek::id::find_val<zeek::BoolVal>("LogNATS::include_unset_fields")->AsBool();
+    create_stream = zeek::id::find_val<zeek::BoolVal>("LogNATS::create_stream")->AsBool();
     publish_error_log = zeek::id::find_val("LogNATS::publish_error_log")->AsCount();
     dropped_writes_log = zeek::id::find_val("LogNATS::dropped_writes_log")->AsCount();
     publish_async_max_pending = zeek::id::find_val("LogNATS::publish_async_max_pending")->AsInt();
@@ -153,6 +154,18 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
                 return false;
             }
         }
+        else if ( zeek::util::streq(name, "create_stream") ) {
+            if ( zeek::util::streq(value, "T") ) {
+                create_stream = true;
+            }
+            else if ( zeek::util::streq(value, "F") ) {
+                create_stream = false;
+            }
+            else {
+                Error(Fmt("NATS: Unknown value for create_stream %s:%s", name, value));
+                return false;
+            }
+        }
         else {
             Error(Fmt("NATS: Unknown map config %s", name));
             return false;
@@ -212,6 +225,11 @@ bool NATSWriter::Connect() {
         Error(Fmt("NATS: Failed to initialize JetStream: %s", nats_GetLastError(nullptr)));
         natsConnection_Destroy(conn);
         conn = nullptr;
+        return false;
+    }
+
+    if ( ! create_stream ) {
+        return true;
     }
 
     jsErrCode jerr;
@@ -245,7 +263,7 @@ bool NATSWriter::Connect() {
 
     debug("Stream added!");
 
-    return conn;
+    return true;
 }
 
 bool NATSWriter::DoWrite(int num_fields, const threading::Field* const* fields, threading::Value** vals) {
