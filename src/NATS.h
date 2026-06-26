@@ -63,6 +63,7 @@ private:
     std::unique_ptr<zeek::threading::formatter::JSON> formatter;
     zeek::ODesc desc;
     bool include_unset_fields;
+    bool create_stream;
 
     NATSWriterStats writer_stats;
     zeek_uint_t publish_error_log;

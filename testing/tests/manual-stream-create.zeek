@@ -1,0 +1,28 @@
+# @TEST-REQUIRES: have-nats
+# @TEST-EXEC: nats-cleanup
+# @TEST-EXEC: nats stream add --defaults --storage=file --subjects='test-sensor.logs.*' test-sensor-logs
+# @TEST-EXEC: zeek -r $TRACES/dns-http-https.pcap %INPUT
+# @TEST-EXEC: nats subscribe 'test-sensor.logs.*' --all -r --wait=10ms | sort >> sensor-logs.jsonl
+# @TEST-EXEC: btest-diff sensor-logs.jsonl
+#
+# @TEST-DOC: Publishing should work if create_stream is false, but the stream is created manually.
+
+@if ( Version::number >= 70100 )
+@load policy/protocols/conn/disable-unknown-ip-proto-support
+@endif
+
+@if ( Version::number >= 80100 )
+@load policy/protocols/dns/disable-opcode-log-fields
+@endif
+
+redef LogNATS::create_stream = F;
+redef LogNATS::publish_subject_template = "test-sensor.logs.{path}";
+redef LogNATS::stream_name_template = "test-sensor-logs";
+redef LogNATS::stream_subject_template = "test-sensor.logs.*";
+
+redef Log::default_writer=Log::WRITER_NATS;
+
+event zeek_init()
+	{
+	Log::disable_stream(PacketFilter::LOG);
+	}

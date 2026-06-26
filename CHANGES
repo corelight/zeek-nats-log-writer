@@ -1,3 +1,13 @@
+0.4.0 | 2026-06-26 19:10:03 +0200
+
+  * Allow optionally creating a Stream (Jaime Piña, Corelight)
+
+    Currently, there is hard-coded behavior to always create a JetStream
+    Stream.
+
+    This change introduces a new option called create_stream that allows a
+    user to enable or disable that behavior.
+
 0.3.1 | 2026-05-26 09:38:40 +0200
 
   * test: add btest for stream_subject_template per-filter config (Simon Dugas, Corelight)
