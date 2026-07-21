@@ -1,7 +1,7 @@
 # @TEST-REQUIRES: have-nats
 # @TEST-EXEC: nats-cleanup
 # @TEST-EXEC: zeek -r $TRACES/dns-http-https.pcap %INPUT
-# @TEST-EXEC: for s in conn dns http ssl ; do echo ${s}; nats subscribe test-sensor.logs.${s} -r --all --wait=10ms ; done >> sensor-logs.jsonl
+# @TEST-EXEC: for s in conn dns http ssl ; do echo ${s}; nats subscribe test-sensor.logs.${s} -r --all --wait=$SUBSCRIBE_WAIT ; done >> sensor-logs.jsonl
 # @TEST-EXEC: btest-diff sensor-logs.jsonl
 
 @if ( Version::number >= 70100 )

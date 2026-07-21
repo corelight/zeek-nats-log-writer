@@ -2,7 +2,7 @@
 # @TEST-EXEC: nats-cleanup
 # @TEST-EXEC: nats stream add --defaults --storage=file --subjects='test-sensor.logs.*' test-sensor-logs
 # @TEST-EXEC: zeek -r $TRACES/dns-http-https.pcap %INPUT
-# @TEST-EXEC: nats subscribe 'test-sensor.logs.*' --all -r --wait=10ms | sort >> sensor-logs.jsonl
+# @TEST-EXEC: nats subscribe 'test-sensor.logs.*' --all -r --wait=$SUBSCRIBE_WAIT | sort >> sensor-logs.jsonl
 # @TEST-EXEC: btest-diff sensor-logs.jsonl
 #
 # @TEST-DOC: Publishing should work if create_stream is false, but the stream is created manually.

@@ -1,7 +1,7 @@
 # @TEST-REQUIRES: have-nats
 # @TEST-EXEC: nats-cleanup
 # @TEST-EXEC: zeek -r $TRACES/dns-http-https.pcap %INPUT
-# @TEST-EXEC: nats subscribe 'test-sensor.logs.*' --all -r --wait=10ms | sort >> sensor-logs.jsonl
+# @TEST-EXEC: nats subscribe 'test-sensor.logs.*' --all -r --wait=$SUBSCRIBE_WAIT | sort >> sensor-logs.jsonl
 # @TEST-EXEC: btest-diff sensor-logs.jsonl
 #
 # @TEST-DOC: Configure just a single stream with sensor.logs.* subject.

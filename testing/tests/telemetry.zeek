@@ -1,6 +1,6 @@
 # @TEST-REQUIRES: have-nats
 # @TEST-EXEC: nats-cleanup
-# @TEST-EXEC: zeek -r $TRACES/wikipedia.trace %INPUT > out
+# @TEST-EXEC: zeek -r $TRACES/wikipedia.trace %INPUT | sort > out
 # @TEST-EXEC: btest-diff out
 
 @if ( Version::number >= 70100 )
