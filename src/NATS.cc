@@ -47,6 +47,7 @@ NATSWriter::NATSWriter(WriterFrontend* frontend) : WriterBackend(frontend) {
     stream_storage = zeek::id::find_val("LogNATS::stream_storage")->AsEnum();
     include_unset_fields = zeek::id::find_val<zeek::BoolVal>("LogNATS::include_unset_fields")->AsBool();
     create_stream = zeek::id::find_val<zeek::BoolVal>("LogNATS::create_stream")->AsBool();
+    json_timestamps = zeek::obj_desc_short(zeek::id::find_val("LogNATS::json_timestamps").get());
     publish_error_log = zeek::id::find_val("LogNATS::publish_error_log")->AsCount();
     dropped_writes_log = zeek::id::find_val("LogNATS::dropped_writes_log")->AsCount();
     publish_async_max_pending = zeek::id::find_val("LogNATS::publish_async_max_pending")->AsInt();
@@ -142,6 +143,9 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
         else if ( zeek::util::streq(name, "publish_subject_template") ) {
             publish_subject_template = value;
         }
+        else if ( zeek::util::streq(name, "json_timestamps") ) {
+            json_timestamps = value;
+        }
         else if ( zeek::util::streq(name, "include_unset_fields") ) {
             if ( zeek::util::streq(value, "T") ) {
                 include_unset_fields = true;
@@ -182,8 +186,23 @@ bool NATSWriter::DoInit(const WriterInfo& info, int arg_num_fields, const thread
     debug("Templated: stream_name=%s subject=%s stream_subject=%s", stream_name.c_str(), publish_subject.c_str(),
           stream_subject.c_str());
 
-    // XXX: Make configurable?
-    auto tf = zeek::threading::formatter::JSON::TS_EPOCH;
+    zeek::threading::formatter::JSON::TimeFormat tf;
+    if ( json_timestamps == "JSON::TS_EPOCH" ) {
+        tf = zeek::threading::formatter::JSON::TS_EPOCH;
+    }
+    else if ( json_timestamps == "JSON::TS_MILLIS" ) {
+        tf = zeek::threading::formatter::JSON::TS_MILLIS;
+    }
+    else if ( json_timestamps == "JSON::TS_MILLIS_UNSIGNED" ) {
+        tf = zeek::threading::formatter::JSON::TS_MILLIS_UNSIGNED;
+    }
+    else if ( json_timestamps == "JSON::TS_ISO8601" ) {
+        tf = zeek::threading::formatter::JSON::TS_ISO8601;
+    }
+    else {
+        Error(Fmt("NATS: Invalid json_timestamps format %s", json_timestamps.c_str()));
+        return false;
+    }
     formatter = std::make_unique<zeek::threading::formatter::JSON>(this, tf, include_unset_fields);
 
     if ( s = natsOptions_Create(&opts); s != NATS_OK ) {
