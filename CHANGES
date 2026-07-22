@@ -1,3 +1,12 @@
+0.4.0-5 | 2026-07-22 20:31:16 +0200
+
+  * install-nats: Support ARM, bump server to 2.14.3 and cli to 0.4.0 (Arne Welzel, Corelight)
+
+    Assuming ARM7. Not sure that's great, but I think reasonable to extend
+    coverage. Should also allow testing on OSX.
+
+  * github/workflows: Include ARM runner in matrix (Arne Welzel, Corelight)
+
 0.4.0-2 | 2026-07-22 20:29:17 +0200
 
   * Fix flaky tests (Jaime Piña, Corelight)
