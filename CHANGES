@@ -1,3 +1,13 @@
+0.4.0-2 | 2026-07-22 20:29:17 +0200
+
+  * Fix flaky tests (Jaime Piña, Corelight)
+
+    Currently, the telemetry.zeek test outputs data non-deterministically.
+    This change sorts the output, so the tests pass more consistently.
+
+    Also, waiting for 10ms for nats messages is not enough time on certain
+    systems. This increases the timeout to avoid test flakes.
+
 0.4.0 | 2026-06-26 19:10:03 +0200
 
   * Allow optionally creating a Stream (Jaime Piña, Corelight)
