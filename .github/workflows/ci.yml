@@ -5,10 +5,14 @@ on:
   pull_request:
 jobs:
   test:
-    name: test-${{ matrix.image }}
-    runs-on: ubuntu-latest
+    name: test-${{ matrix.runner}}-${{ matrix.image }}
+    runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
         image:
           - zeek-8.0
           - zeek-dev
