@@ -22,6 +22,11 @@ export {
 
 	global include_unset_fields: bool = F &redef;
 
+	# Format of the timestamp fields (e.g. ts, _write_ts) in the JSON output.
+	# Accepts the same values as LogAscii::json_timestamps: JSON::TS_EPOCH,
+	# JSON::TS_MILLIS, JSON::TS_MILLIS_UNSIGNED, JSON::TS_ISO8601.
+	global json_timestamps: JSON::TimestampFormat = JSON::TS_EPOCH &redef;
+
 	# By default, zeek-log-writer-nats will automatically create a JetStream
 	# stream to publish on. If create_stream is false, then the stream must be
 	# created and configured manually to work with zeek-log-writer-nats.
